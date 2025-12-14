@@ -49,6 +49,7 @@ button {
     border-radius: 12px;
     border: none;
     cursor: pointer;
+    margin: 10px;
 }
 
 .hidden { display: none; }
@@ -64,13 +65,15 @@ button {
     <div>⭐ <span id="score">0</span></div>
 </div>
 
-<div id="word">Tap Start</div>
+<div id="word">Tap Enable Tilt</div>
 
-<button id="startBtn" onclick="startGame()">Start Game</button>
+<button id="motionBtn" onclick="unlockFeatures()">Enable Tilt</button>
+<button id="startBtn" class="hidden" onclick="startGame()">Start Game</button>
 
-<audio id="endSound" src="round-end.mp3"></audio>
+<audio id="endSound" src="round-end.mp3" preload="auto"></audio>
 
 <script>
+/* ================= WORD LIST ================= */
 const words = [
 "Abbreviate","Abstinence","Adulation","Adversity","Aesthetic","Amicable",
 "Anachronistic","Anecdote","Anonymous","Antagonist","Arid","Assiduous",
@@ -92,15 +95,20 @@ const words = [
 "Tenacious","Transient","Venerable","Vindicate","Wary"
 ];
 
+/* ================= STATE ================= */
 let deck = [];
 let index = 0;
 let score = 0;
 let timeLeft = 60;
 let timer;
 let lastTilt = 0;
+let tiltEnabled = false;
+let audioUnlocked = false;
 
 const wordEl = document.getElementById("word");
+const endSound = document.getElementById("endSound");
 
+/* ================= HELPERS ================= */
 function shuffle(arr) {
     return arr.sort(() => Math.random() - 0.5);
 }
@@ -110,6 +118,12 @@ function nextWord() {
     wordEl.innerText = deck[index++];
 }
 
+function animate(type) {
+    wordEl.classList.add(type);
+    setTimeout(() => wordEl.classList.remove(type), 300);
+}
+
+/* ================= GAME LOGIC ================= */
 function startGame() {
     deck = shuffle([...words]);
     index = 0;
@@ -129,11 +143,6 @@ function startGame() {
     }, 1000);
 }
 
-function animate(type) {
-    wordEl.classList.add(type);
-    setTimeout(() => wordEl.classList.remove(type), 300);
-}
-
 function correct() {
     score++;
     document.getElementById("score").innerText = score;
@@ -148,23 +157,54 @@ function pass() {
 
 function endGame() {
     clearInterval(timer);
-    document.getElementById("endSound").play();
+    if (audioUnlocked) endSound.play();
     wordEl.innerText = `⏰ Time's Up!\nScore: ${score}`;
     document.getElementById("startBtn").classList.remove("hidden");
 }
 
-// TILT CONTROLS
+/* ================= UNLOCK MOTION + AUDIO ================= */
+function unlockFeatures() {
+
+    // 🔊 Unlock audio
+    endSound.play().then(() => {
+        endSound.pause();
+        endSound.currentTime = 0;
+        audioUnlocked = true;
+    }).catch(() => {});
+
+    // 📱 Unlock motion (iPhone requires permission)
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+
+        DeviceOrientationEvent.requestPermission()
+            .then(response => {
+                if (response === "granted") enableTilt();
+            })
+            .catch(console.error);
+    } else {
+        enableTilt();
+    }
+}
+
+function enableTilt() {
+    tiltEnabled = true;
+    document.getElementById("motionBtn").classList.add("hidden");
+    document.getElementById("startBtn").classList.remove("hidden");
+    wordEl.innerText = "Tap Start";
+}
+
+/* ================= TILT CONTROLS ================= */
 window.addEventListener("deviceorientation", e => {
+    if (!tiltEnabled) return;
+
     const beta = e.beta;
     const now = Date.now();
-
     if (now - lastTilt < 1200) return;
 
     if (beta > 25) {
         pass();
         lastTilt = now;
-    } 
-    else if (beta < -25) {
+    } else if (beta < -25) {
         correct();
         lastTilt = now;
     }
