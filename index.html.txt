@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sat Heads Up</title>
+
+<style>
+body {
+    margin: 0;
+    background: #8b0000;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    overflow: hidden;
+}
+
+h1 { margin-top: 20px; }
+
+#top {
+    display: flex;
+    justify-content: space-around;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+#word {
+    font-size: 42px;
+    margin: 50px 20px;
+    padding: 30px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 18px;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.correct {
+    background: rgba(0, 200, 0, 0.6);
+    transform: rotateX(-20deg);
+}
+
+.pass {
+    background: rgba(200, 0, 0, 0.6);
+    transform: rotateX(20deg);
+}
+
+button {
+    font-size: 22px;
+    padding: 15px 30px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+}
+
+.hidden { display: none; }
+</style>
+</head>
+
+<body>
+
+<h1>Sat Heads Up</h1>
+
+<div id="top">
+    <div>⏱ <span id="timer">60</span></div>
+    <div>⭐ <span id="score">0</span></div>
+</div>
+
+<div id="word">Tap Start</div>
+
+<button id="startBtn" onclick="startGame()">Start Game</button>
+
+<audio id="endSound" src="round-end.mp3"></audio>
+
+<script>
+const words = [
+"Abbreviate","Abstinence","Adulation","Adversity","Aesthetic","Amicable",
+"Anachronistic","Anecdote","Anonymous","Antagonist","Arid","Assiduous",
+"Asylum","Benevolent","Camaraderie","Censure","Circuitous","Clairvoyant",
+"Collaborate","Compassion","Compromise","Condescending","Conditional",
+"Conformist","Congregation","Convergence","Deleterious","Demagogue",
+"Digression","Diligent","Discredit","Disdain","Divergent","Empathy",
+"Emulate","Enervating","Enhance","Ephemeral","Evanescent","Exasperation",
+"Exemplary","Extenuating","Florid","Fortuitous","Frugal","Hackneyed",
+"Haughty","Hedonist","Hypothesis","Impetuous","Impute","Incompatible",
+"Inconsequential","Inevitable","Integrity","Intrepid","Intuitive",
+"Jubilation","Lobbyist","Longevity","Mundane","Nonchalant","Novice",
+"Opulent","Orator","Ostentatious","Parched","Perfidiuos","Precocious",
+"Pretentious","Procrastinate","Prosaic","Prosperity","Provocative",
+"Prudent","Querulous","Rancorous","Reclusive","Reconciliation",
+"Renovation","Resilient","Restrained","Reverence","Sagacity","Scrutinize",
+"Spontaneity","Spurious","Submissive","Substantiate","Subtle",
+"Superficial","Superfluous","Suppress","Surreptitious","Tactful",
+"Tenacious","Transient","Venerable","Vindicate","Wary"
+];
+
+let deck = [];
+let index = 0;
+let score = 0;
+let timeLeft = 60;
+let timer;
+let lastTilt = 0;
+
+const wordEl = document.getElementById("word");
+
+function shuffle(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+}
+
+function nextWord() {
+    if (index >= deck.length) index = 0;
+    wordEl.innerText = deck[index++];
+}
+
+function startGame() {
+    deck = shuffle([...words]);
+    index = 0;
+    score = 0;
+    timeLeft = 60;
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("timer").innerText = timeLeft;
+    document.getElementById("startBtn").classList.add("hidden");
+
+    nextWord();
+
+    timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").innerText = timeLeft;
+        if (timeLeft <= 0) endGame();
+    }, 1000);
+}
+
+function animate(type) {
+    wordEl.classList.add(type);
+    setTimeout(() => wordEl.classList.remove(type), 300);
+}
+
+function correct() {
+    score++;
+    document.getElementById("score").innerText = score;
+    animate("correct");
+    setTimeout(nextWord, 300);
+}
+
+function pass() {
+    animate("pass");
+    setTimeout(nextWord, 300);
+}
+
+function endGame() {
+    clearInterval(timer);
+    document.getElementById("endSound").play();
+    wordEl.innerText = `⏰ Time's Up!\nScore: ${score}`;
+    document.getElementById("startBtn").classList.remove("hidden");
+}
+
+// TILT CONTROLS
+window.addEventListener("deviceorientation", e => {
+    const beta = e.beta;
+    const now = Date.now();
+
+    if (now - lastTilt < 1200) return;
+
+    if (beta > 25) {
+        pass();
+        lastTilt = now;
+    } 
+    else if (beta < -25) {
+        correct();
+        lastTilt = now;
+    }
+});
+</script>
+
+</body>
+</html>
