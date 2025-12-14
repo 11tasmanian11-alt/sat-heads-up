@@ -101,10 +101,13 @@ let index = 0;
 let score = 0;
 let timeLeft = 60;
 let timer;
-let lastTilt = 0;
+
 let tiltEnabled = false;
 let audioUnlocked = false;
+
 let neutralBeta = null;
+let lastTilt = 0;
+let tiltStartTime = null;
 
 const wordEl = document.getElementById("word");
 const endSound = document.getElementById("endSound");
@@ -130,7 +133,10 @@ function startGame() {
     index = 0;
     score = 0;
     timeLeft = 60;
+
     neutralBeta = null;
+    lastTilt = 0;
+    tiltStartTime = null;
 
     document.getElementById("score").innerText = score;
     document.getElementById("timer").innerText = timeLeft;
@@ -166,14 +172,14 @@ function endGame() {
 
 /* ================= UNLOCK MOTION + AUDIO ================= */
 function unlockFeatures() {
-    // 🔊 Unlock audio
+    // Unlock audio
     endSound.play().then(() => {
         endSound.pause();
         endSound.currentTime = 0;
         audioUnlocked = true;
     }).catch(() => {});
 
-    // 📱 Unlock motion (iPhone requires permission)
+    // Unlock motion (iOS)
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
 
@@ -191,17 +197,17 @@ function enableTilt() {
     tiltEnabled = true;
     document.getElementById("motionBtn").classList.add("hidden");
     document.getElementById("startBtn").classList.remove("hidden");
-    wordEl.innerText = "Tap Start";
+    wordEl.innerText = "Tap Start & Hold Still";
 }
 
-/* ================= TILT CONTROLS ================= */
+/* ================= STABLE TILT CONTROLS ================= */
 window.addEventListener("deviceorientation", e => {
     if (!tiltEnabled || timeLeft <= 0) return;
 
     const beta = e.beta;
     if (beta === null) return;
 
-    // Set neutral position once at game start
+    // Capture neutral once
     if (neutralBeta === null) {
         neutralBeta = beta;
         return;
@@ -210,18 +216,32 @@ window.addEventListener("deviceorientation", e => {
     const diff = beta - neutralBeta;
     const now = Date.now();
 
-    if (now - lastTilt < 1200) return;
+    // Dead zone (ignore jitter)
+    if (Math.abs(diff) < 12) {
+        tiltStartTime = null;
+        return;
+    }
 
-    // Tilt DOWN (forward) = PASS
-    if (diff > 20) {
+    // Require hold time
+    if (!tiltStartTime) {
+        tiltStartTime = now;
+        return;
+    }
+
+    if (now - tiltStartTime < 300) return;
+
+    // Lockout
+    if (now - lastTilt < 1500) return;
+
+    if (diff > 35) {
         pass();
-        lastTilt = now;
-    }
-    // Tilt UP (backward) = CORRECT
-    else if (diff < -20) {
+    } else if (diff < -35) {
         correct();
-        lastTilt = now;
     }
+
+    lastTilt = now;
+    tiltStartTime = null;
+    neutralBeta = beta;
 });
 </script>
 
