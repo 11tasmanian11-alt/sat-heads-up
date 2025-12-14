@@ -174,4 +174,56 @@ function unlockFeatures() {
     }).catch(() => {});
 
     // 📱 Unlock motion (iPhone requires permission)
-    if (typeof DeviceOrientationEvent !==
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+
+        DeviceOrientationEvent.requestPermission()
+            .then(response => {
+                if (response === "granted") enableTilt();
+            })
+            .catch(console.error);
+    } else {
+        enableTilt();
+    }
+}
+
+function enableTilt() {
+    tiltEnabled = true;
+    document.getElementById("motionBtn").classList.add("hidden");
+    document.getElementById("startBtn").classList.remove("hidden");
+    wordEl.innerText = "Tap Start";
+}
+
+/* ================= TILT CONTROLS ================= */
+window.addEventListener("deviceorientation", e => {
+    if (!tiltEnabled || timeLeft <= 0) return;
+
+    const beta = e.beta;
+    if (beta === null) return;
+
+    // Set neutral position once at game start
+    if (neutralBeta === null) {
+        neutralBeta = beta;
+        return;
+    }
+
+    const diff = beta - neutralBeta;
+    const now = Date.now();
+
+    if (now - lastTilt < 1200) return;
+
+    // Tilt DOWN (forward) = PASS
+    if (diff > 20) {
+        pass();
+        lastTilt = now;
+    }
+    // Tilt UP (backward) = CORRECT
+    else if (diff < -20) {
+        correct();
+        lastTilt = now;
+    }
+});
+</script>
+
+</body>
+</html>
